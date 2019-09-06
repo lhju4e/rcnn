@@ -261,7 +261,7 @@ def detect_and_color_splash(model, image_path=None, video_path=None):
         # Save output
         file_name = "splash_{:%Y%m%dT%H%M%S}.png".format(datetime.datetime.now())
         skimage.io.imsave(file_name, splash)
-        class_names=['BG', 'damage', 'scratch']
+        class_names=['BG', 'scratch', 'damage']
 
         #save detection image
         visualize.display_instances(image, r['rois'], r['masks'], r['class_ids'], class_names)
