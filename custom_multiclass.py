@@ -41,6 +41,7 @@ ROOT_DIR = ROOT_DIR = os.getcwd()
 sys.path.append(ROOT_DIR)  # To find local version of the library
 from mrcnn.config import Config
 from mrcnn import model as modellib, utils
+from mrcnn import visualize
 
 # Path to trained weights file
 COCO_WEIGHTS_PATH = os.path.join(ROOT_DIR, "mask_rcnn_coco.h5")
@@ -170,9 +171,10 @@ class CustomDataset(utils.Dataset):
             one mask per instance.
         class_ids: a 1D array of class IDs of the instance masks.
         """
-        # If not a balloon dataset image, delegate to parent class.
+        # !앞에서 정의해준 part가 아니라면 부모함수 호출. 그런데 부모함수 호출하면 mask그냥 empty로 나옴..
+        # !왜 이렇게 해놨는지 잘 모르겠음 ㅇㅅㅇ;
         image_info = self.image_info[image_id]
-        if image_info["source"] != "balloon":
+        if image_info["source"] != "part":
             return super(self.__class__, self).load_mask(image_id)
 
         info = self.image_info[image_id]
@@ -188,7 +190,8 @@ class CustomDataset(utils.Dataset):
         # print("info['num_ids']=", info['num_ids'])
         # Map class names to class IDs.
         num_ids = info['num_ids']
-        return mask.astype(np.bool), num_ids.astype(np.int32)
+        #마스크와 그 마스크에 해당하는 클래스 리턴(damage, scratch
+        return mask.astype(np.bool), np.int32(num_ids)
 
     def image_reference(self, image_id):
         """Return the path of the image."""
@@ -210,13 +213,6 @@ def train(model):
     dataset_val = CustomDataset()
     dataset_val.load_custom(args.dataset, "val")
     dataset_val.prepare()
-
-    #!!!!!!!!!!!!!!!!!!!!여기 삭제하기
-    print("Image Count: {}".format(len(dataset_val.image_ids)))
-    print("Class Count: {}".format(dataset_val.num_classes))
-    for i, info in enumerate(dataset_val.class_info):
-        print("{:3}. {:50}".format(i, info['name']))
-
 
     # *** This training schedule is an example. Update to your needs ***
     # Since we're using a very small dataset, and starting from
@@ -265,6 +261,13 @@ def detect_and_color_splash(model, image_path=None, video_path=None):
         # Save output
         file_name = "splash_{:%Y%m%dT%H%M%S}.png".format(datetime.datetime.now())
         skimage.io.imsave(file_name, splash)
+        class_names=['BG', 'damage', 'scratch']
+
+        #save detection image
+        visualize.display_instances(image, r['rois'], r['masks'], r['class_ids'], class_names)
+
+
+
     elif video_path:
         import cv2
         # Video capture
