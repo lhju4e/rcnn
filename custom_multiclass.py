@@ -67,7 +67,7 @@ class CustomConfig(Config):
     IMAGES_PER_GPU = 2
 
     # Number of classes (including background)
-    NUM_CLASSES = 1 + 2  # Background + 2 classes (damage, scratch)
+    NUM_CLASSES = 1 + 2  # Background + 2 classes (dent, scratch)
 
     # Use smaller images for faster training. Set the limits of the small side
     # the large side, and that determines the image shape.
@@ -95,7 +95,7 @@ class CustomDataset(utils.Dataset):
         # Add classes. We have only one class to add.
         #add_class(source, class_id, class_name)
         self.add_class("part", 1, "scratch")
-        self.add_class("part", 2, "damage")
+        self.add_class("part", 2, "dent")
 
         # Train or validation dataset?
         assert subset in ["train", "val"]
@@ -116,7 +116,7 @@ class CustomDataset(utils.Dataset):
         #   'size': 100202
         # }
         # !!파일 바꿔주기!!
-        annotations = json.load(open(os.path.join(dataset_dir, "via_export_" + subset + ".json")))
+        annotations = json.load(open(os.path.join(dataset_dir, "all_" + subset + ".json")))
 
         # print(annotations1)
         annotations = list(annotations.values())  # don't need the dict keys
@@ -143,7 +143,7 @@ class CustomDataset(utils.Dataset):
                 try:
                     if n['name'] == 'scratch':
                         num_ids.append(1)
-                    elif n['name'] == 'damage':
+                    elif n['name'] == 'dent':
                         num_ids.append(2)
 
                 except:
@@ -186,11 +186,15 @@ class CustomDataset(utils.Dataset):
         for i, p in enumerate(info["polygons"]):
             # Get indexes of pixels inside the polygon and set them to 1
             rr, cc = skimage.draw.polygon(p['all_points_y'], p['all_points_x'])
-            mask[rr, cc, i] = 1
+            try:
+                mask[rr, cc, i] = 1
+            except :
+                print("mask error : ", image_id)
+
         # print("info['num_ids']=", info['num_ids'])
         # Map class names to class IDs.
         num_ids = info['num_ids']
-        #마스크와 그 마스크에 해당하는 클래스 리턴(damage, scratch
+        #마스크와 그 마스크에 해당하는 클래스 리턴(dent, scratch
         return mask.astype(np.bool), np.int32(num_ids)
 
     def image_reference(self, image_id):
@@ -221,7 +225,7 @@ def train(model):
     print("Training network heads")
     model.train(dataset_train, dataset_val,
                 learning_rate=config.LEARNING_RATE,
-                epochs=10,
+                epochs=30,
                 layers='heads')
 
 
@@ -261,7 +265,7 @@ def detect_and_color_splash(model, image_path=None, video_path=None):
         # Save output
         file_name = "splash_{:%Y%m%dT%H%M%S}.png".format(datetime.datetime.now())
         skimage.io.imsave(file_name, splash)
-        class_names=['BG', 'scratch', 'damage']
+        class_names=['BG', 'scratch', 'dent']
 
         #save detection image
         visualize.display_instances(image, r['rois'], r['masks'], r['class_ids'], class_names)
